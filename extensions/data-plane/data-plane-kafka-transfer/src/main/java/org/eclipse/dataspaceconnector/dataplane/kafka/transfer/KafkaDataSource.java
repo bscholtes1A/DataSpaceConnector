@@ -55,6 +55,7 @@ class KafkaDataSource implements DataSource {
         var props = new Properties();
         props.putAll(consumerProperties);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        monitor.debug(String.format("Create kafka consumer for topic %s with props: %s", topic, props));
         var consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(topic));
         return consumer;

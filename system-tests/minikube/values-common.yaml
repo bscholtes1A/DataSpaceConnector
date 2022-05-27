@@ -1,0 +1,34 @@
+edc:
+  env:
+    WEB_HTTP_PORT: "{{ .Values.ports.http.containerPort }}"
+    WEB_HTTP_PATH: "{{ .Values.ports.http.path }}"
+    WEB_HTTP_DATA_PORT: "{{ .Values.ports.apimgnt.containerPort }}"
+    WEB_HTTP_DATA_PATH: "{{ .Values.ports.apimgnt.path }}"
+    WEB_HTTP_IDS_PORT: "{{ .Values.ports.ids.containerPort }}"
+    WEB_HTTP_IDS_PATH: "{{ .Values.ports.ids.path }}"
+
+ports:
+  http:
+    containerPort: 8181
+    servicePort: 80
+    path: /api
+    type: NodePort
+  ids:
+    containerPort: 8282
+    servicePort: 8282
+    path: /api/v1/ids
+    type: NodePort
+  apimgnt:
+    containerPort: 9191
+    servicePort: 91
+    path: /api/v1/data
+    type: NodePort
+
+ingress:
+  hosts:
+    - host: test
+      paths:
+        - port: 80
+          pathType: Prefix
+          path: /
+

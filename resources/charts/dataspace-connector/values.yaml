@@ -27,28 +27,20 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+ports: {}
+
+volumes: {}
+
 edc:
-  port: 8181
-  path: /api
-  managementApi:
-    enabled: true
-    port: 9191
-    path: /api/v1/data
-  idsApi:
-    port: 8282
-    path: /api/v1/ids
   env: {}
   envSecrets: {}
+  volumeMounts: []
+
 service:
   type: ClusterIP
-  port: 80
-  managementApi:
-    port: 91
-  idsApi:
-    port: 8282
 
 ingress:
-  enabled: false
+  enabled: true
   ingressClassName: ""
   annotations: {}
     # kubernetes.io/ingress.class: nginx
@@ -56,6 +48,7 @@ ingress:
   hosts:
     - host: dataspace-connector.local
       paths: []
+
   tls: []
   #  - secretName: dataspace-connector-tls
   #    hosts:
