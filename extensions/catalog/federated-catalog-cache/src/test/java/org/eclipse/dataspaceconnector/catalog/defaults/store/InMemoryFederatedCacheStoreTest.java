@@ -15,6 +15,8 @@
 package org.eclipse.dataspaceconnector.catalog.defaults.store;
 
 
+import com.github.javafaker.Faker;
+import org.assertj.core.api.ThrowingConsumer;
 import org.eclipse.dataspaceconnector.catalog.spi.FederatedCacheStore;
 import org.eclipse.dataspaceconnector.catalog.store.InMemoryFederatedCacheStore;
 import org.eclipse.dataspaceconnector.common.concurrency.LockManager;
@@ -25,111 +27,131 @@ import org.eclipse.dataspaceconnector.spi.types.domain.contract.offer.ContractOf
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class InMemoryFederatedCacheStoreTest {
 
+    private static final Faker FAKER = new Faker();
+
+    private final Clock clock = mock(Clock.class);
+
     private FederatedCacheStore store;
 
-    private static Asset createAsset(String id) {
-        return Asset.Builder.newInstance()
-                .id(id)
-                .build();
+    @BeforeEach
+    public void setUp() {
+        CriterionConverter<Predicate<ContractOffer>> converter = criterion -> offer -> true;
+        store = new InMemoryFederatedCacheStore(converter, new LockManager(new ReentrantReadWriteLock()), clock);
     }
 
-    private static ContractOffer createContractOffer(String id, Asset asset) {
+    @Test
+    void queryCacheContainingOneElementWithNoCriterion_shouldReturnUniqueElement() {
+        var contractOffer = createContractOffer();
+
+        store.save(contractOffer);
+
+        var result = store.query(Collections.emptyList());
+
+        assertThat(result)
+                .hasSize(1)
+                .allSatisfy(new ContractOfferConsumer(contractOffer));
+    }
+
+    @Test
+    void queryCacheAfterInsertingSameAssetTwice_shouldReturnLastInsertedContractOfferOnly() {
+        var contractOffer1 = createContractOffer();
+        var contractOffer2 = createContractOffer(contractOffer1.getAsset());
+
+        store.save(contractOffer1);
+        store.save(contractOffer2);
+
+        var result = store.query(Collections.emptyList());
+
+        assertThat(result)
+                .hasSize(1)
+                .allSatisfy(new ContractOfferConsumer(contractOffer2));
+    }
+
+    @Test
+    void queryCacheContainingTwoDistinctAssets_shouldReturnBothContractOffers() {
+        var contractOffer1 = createContractOffer();
+        var contractOffer2 = createContractOffer();
+
+        store.save(contractOffer1);
+        store.save(contractOffer2);
+
+        var result = store.query(Collections.emptyList());
+
+        assertThat(result)
+                .hasSize(2)
+                .anySatisfy(new ContractOfferConsumer(contractOffer1))
+                .anySatisfy(new ContractOfferConsumer(contractOffer2));
+    }
+
+    @Test
+    void deleteExpired() {
+        var ttlSeconds = FAKER.random().nextInt(30, 60);
+
+        var contractOffer1 = createContractOffer();
+        var contractOffer2 = createContractOffer();
+        var contractOffer3 = createContractOffer();
+
+        var now = Instant.now();
+        when(clock.instant()).thenReturn(
+                now.plusSeconds(FAKER.random().nextInt(100)),
+                now.minusSeconds(2L * ttlSeconds),
+                now.minusSeconds(ttlSeconds / 2));
+
+        store.save(contractOffer1);
+        store.save(contractOffer2);
+        store.save(contractOffer3);
+
+        assertThat(store.query(List.of())).hasSize(3);
+
+        store.deleteExpired(Duration.ofSeconds(ttlSeconds));
+
+        assertThat(store.query(List.of()))
+                .hasSize(2)
+                .anySatisfy(new ContractOfferConsumer(contractOffer1))
+                .anySatisfy(new ContractOfferConsumer(contractOffer3));
+    }
+
+    private static ContractOffer createContractOffer() {
+        var asset = Asset.Builder.newInstance()
+                .id(FAKER.internet().uuid())
+                .build();
+        return createContractOffer(asset);
+    }
+
+    private static ContractOffer createContractOffer(Asset asset) {
         return ContractOffer.Builder.newInstance()
-                .id(id)
+                .id(FAKER.internet().uuid())
                 .asset(asset)
                 .policy(Policy.Builder.newInstance().build())
                 .build();
     }
 
-    @BeforeEach
-    public void setUp() {
-        CriterionConverter<Predicate<ContractOffer>> converter = criterion -> offer -> true;
-        store = new InMemoryFederatedCacheStore(converter, new LockManager(new ReentrantReadWriteLock()));
-    }
+    private static final class ContractOfferConsumer implements ThrowingConsumer<ContractOffer> {
 
-    @Test
-    void queryCacheContainingOneElementWithNoCriterion_shouldReturnUniqueElement() {
-        String contractOfferId = UUID.randomUUID().toString();
-        String assetId = UUID.randomUUID().toString();
-        ContractOffer contractOffer = createContractOffer(contractOfferId, createAsset(assetId));
+        private final ContractOffer expected;
 
-        store.save(contractOffer);
+        private ContractOfferConsumer(ContractOffer expected) {
+            this.expected = expected;
+        }
 
-        Collection<ContractOffer> result = store.query(Collections.emptyList());
-
-        assertThat(result)
-                .hasSize(1)
-                .allSatisfy(co -> assertThat(co.getAsset().getId()).isEqualTo(assetId));
-    }
-
-    @Test
-    void queryCacheAfterInsertingSameAssetTwice_shouldReturnLastInsertedContractOfferOnly() {
-        String contractOfferId1 = UUID.randomUUID().toString();
-        String contractOfferId2 = UUID.randomUUID().toString();
-        String assetId = UUID.randomUUID().toString();
-        ContractOffer contractOffer1 = createContractOffer(contractOfferId1, createAsset(assetId));
-        ContractOffer contractOffer2 = createContractOffer(contractOfferId2, createAsset(assetId));
-
-        store.save(contractOffer1);
-        store.save(contractOffer2);
-
-        Collection<ContractOffer> result = store.query(Collections.emptyList());
-
-        assertThat(result)
-                .hasSize(1)
-                .allSatisfy(co -> {
-                    assertThat(co.getId()).isEqualTo(contractOfferId2);
-                    assertThat(co.getAsset().getId()).isEqualTo(assetId);
-                });
-    }
-
-    @Test
-    void queryCacheContainingTwoDistinctAssets_shouldReturnBothContractOffers() {
-        String contractOfferId1 = UUID.randomUUID().toString();
-        String contractOfferId2 = UUID.randomUUID().toString();
-        String assetId1 = UUID.randomUUID().toString();
-        String assetId2 = UUID.randomUUID().toString();
-        ContractOffer contractOffer1 = createContractOffer(contractOfferId1, createAsset(assetId1));
-        ContractOffer contractOffer2 = createContractOffer(contractOfferId2, createAsset(assetId2));
-
-        store.save(contractOffer1);
-        store.save(contractOffer2);
-
-        Collection<ContractOffer> result = store.query(Collections.emptyList());
-
-        assertThat(result)
-                .hasSize(2)
-                .anySatisfy(co -> assertThat(co.getAsset().getId()).isEqualTo(assetId1))
-                .anySatisfy(co -> assertThat(co.getAsset().getId()).isEqualTo(assetId2));
-    }
-
-    @Test
-    void deleteAll() {
-        String contractOfferId1 = UUID.randomUUID().toString();
-        String contractOfferId2 = UUID.randomUUID().toString();
-        String assetId1 = UUID.randomUUID().toString();
-        String assetId2 = UUID.randomUUID().toString();
-        ContractOffer contractOffer1 = createContractOffer(contractOfferId1, createAsset(assetId1));
-        ContractOffer contractOffer2 = createContractOffer(contractOfferId2, createAsset(assetId2));
-
-        store.save(contractOffer1);
-        store.save(contractOffer2);
-
-        assertThat(store.query(List.of())).hasSize(2);
-
-        store.deleteAll();
-        assertThat(store.query(List.of())).isEmpty();
-
+        @Override
+        public void acceptThrows(ContractOffer co) throws Throwable {
+            assertThat(co.getId()).isEqualTo(expected.getId());
+            assertThat(co.getAsset().getId()).isEqualTo(expected.getAsset().getId());
+        }
     }
 }

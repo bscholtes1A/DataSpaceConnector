@@ -38,9 +38,4 @@ public class LoaderImpl implements Loader {
             });
         }
     }
-
-    @Override
-    public void clear() {
-        store.deleteAll(); // delete all entries before re-populating
-    }
 }

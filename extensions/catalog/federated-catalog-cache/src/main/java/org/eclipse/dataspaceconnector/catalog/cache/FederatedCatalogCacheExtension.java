@@ -52,6 +52,7 @@ import org.eclipse.dataspaceconnector.spi.system.health.HealthCheckResult;
 import org.eclipse.dataspaceconnector.spi.system.health.HealthCheckService;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Random;
@@ -67,6 +68,7 @@ import static java.lang.String.format;
 
 @Provides({ Crawler.class, LoaderManager.class, QueryEngine.class, NodeQueryAdapterRegistry.class, CacheQueryAdapterRegistry.class })
 public class FederatedCatalogCacheExtension implements ServiceExtension {
+
     public static final int DEFAULT_NUM_CRAWLERS = 1;
     private static final int DEFAULT_QUEUE_LENGTH = 50;
     private static final int DEFAULT_BATCH_SIZE = 1;
@@ -89,6 +91,8 @@ public class FederatedCatalogCacheExtension implements ServiceExtension {
     private FederatedCacheNodeDirectory directory;
     @Inject
     private RetryPolicy<Object> retryPolicy;
+    @Inject
+    private Clock clock;
 
     @Override
     public String name() {
@@ -143,9 +147,9 @@ public class FederatedCatalogCacheExtension implements ServiceExtension {
     }
 
     @Provider(isDefault = true)
-    public FederatedCacheStore defaultCacheStore() {
+    public FederatedCacheStore defaultCacheStore(Clock clock) {
         //todo: converts every criterion into a predicate that is always true. must be changed later!
-        return new InMemoryFederatedCacheStore(criterion -> offer -> true, new LockManager(new ReentrantReadWriteLock()));
+        return new InMemoryFederatedCacheStore(criterion -> offer -> true, new LockManager(new ReentrantReadWriteLock()), clock);
     }
 
     @Provider(isDefault = true)
@@ -176,7 +180,9 @@ public class FederatedCatalogCacheExtension implements ServiceExtension {
                 workItems -> createCrawler(workItems, context, protocolAdapterRegistry, updateResponseQueue),
                 partitionManagerConfig.getNumCrawlers(DEFAULT_NUM_CRAWLERS),
                 nodes);
-        pm.setPreExecutionHook(() -> loaderManager.clear());
+
+        var cachedItemsTimeToLive = partitionManagerConfig.getCachedItemsTimeToLive();
+        pm.setPreExecutionHook(() -> store.deleteExpired(Duration.ofSeconds(cachedItemsTimeToLive)));
         return pm;
     }
 

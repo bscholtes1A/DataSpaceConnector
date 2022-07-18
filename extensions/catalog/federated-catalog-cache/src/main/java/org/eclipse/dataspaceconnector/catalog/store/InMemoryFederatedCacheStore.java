@@ -20,6 +20,9 @@ import org.eclipse.dataspaceconnector.spi.query.Criterion;
 import org.eclipse.dataspaceconnector.spi.query.CriterionConverter;
 import org.eclipse.dataspaceconnector.spi.types.domain.contract.offer.ContractOffer;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -32,32 +35,42 @@ import java.util.stream.Collectors;
  */
 public class InMemoryFederatedCacheStore implements FederatedCacheStore {
 
-    private final Map<String, ContractOffer> cache = new ConcurrentHashMap<>();
+    private final Map<String, CachedContractOffer> cache = new ConcurrentHashMap<>();
     private final CriterionConverter<Predicate<ContractOffer>> converter;
     private final LockManager lockManager;
+    private final Clock clock;
 
-    public InMemoryFederatedCacheStore(CriterionConverter<Predicate<ContractOffer>> converter, LockManager lockManager) {
+    public InMemoryFederatedCacheStore(CriterionConverter<Predicate<ContractOffer>> converter, LockManager lockManager, Clock clock) {
         this.converter = converter;
         this.lockManager = lockManager;
+        this.clock = clock;
     }
 
     @Override
     public void save(ContractOffer contractOffer) {
-        lockManager.writeLock(() -> cache.put(contractOffer.getAsset().getId(), contractOffer));
+        lockManager.writeLock(() -> cache.put(contractOffer.getAsset().getId(), new CachedContractOffer(clock.instant(), contractOffer)));
     }
 
     @Override
     public Collection<ContractOffer> query(List<Criterion> query) {
         //AND all predicates
         var rootPredicate = query.stream().map(converter::convert).reduce(x -> true, Predicate::and);
-        return lockManager.readLock(() -> cache.values().stream().filter(rootPredicate).collect(Collectors.toList()));
+        return lockManager.readLock(() -> cache.values().stream().map(i -> i.contractOffer).filter(rootPredicate).collect(Collectors.toList()));
     }
 
     @Override
-    public void deleteAll() {
-        lockManager.writeLock(() -> {
-            cache.clear();
-            return null;
-        });
+    public void deleteExpired(Duration ttl) {
+        var limit = clock.instant().minusSeconds(ttl.toSeconds());
+        lockManager.writeLock(() -> cache.values().removeIf(i -> i.createdAt.isBefore(limit)));
+    }
+
+    private static final class CachedContractOffer {
+        private final Instant createdAt;
+        private final ContractOffer contractOffer;
+
+        private CachedContractOffer(Instant createdAt, ContractOffer contractOffer) {
+            this.createdAt = createdAt;
+            this.contractOffer = contractOffer;
+        }
     }
 }

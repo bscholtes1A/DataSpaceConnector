@@ -33,9 +33,4 @@ public interface LoaderManager {
     void start(BlockingQueue<UpdateResponse> queue);
 
     void stop();
-
-    /**
-     * Clears out the internal storage for all loaders. Useful when invoked before a crawl run
-     */
-    void clear();
 }

@@ -22,6 +22,7 @@ import org.eclipse.dataspaceconnector.spi.system.ServiceExtensionContext;
 import java.time.Duration;
 import java.util.Random;
 
+import static java.lang.Math.max;
 import static java.lang.String.format;
 
 /**
@@ -43,6 +44,8 @@ public class PartitionConfiguration {
     private static final String PART_LOADER_RETRY_TIMEOUT = "edc.catalog.cache.loader.timeout.millis";
     @EdcSetting
     private static final String PART_EXECUTION_PLAN_DELAY_SECONDS = "edc.catalog.cache.execution.delay.seconds";
+    @EdcSetting
+    private static final String CACHED_ITEMS_TIME_TO_LIVE_SECONDS = "edc.catalog.cached.items.ttl.seconds";
     private static final int DEFAULT_EXECUTION_PERIOD_SECONDS = 60;
     private static final int LOW_EXECUTION_PERIOD_SECONDS_THRESHOLD = 10;
     private static final int DEFAULT_WORK_ITEM_QUEUE_SIZE = 10;
@@ -54,6 +57,12 @@ public class PartitionConfiguration {
 
     public int getWorkItemQueueSize() {
         return context.getSetting(PART_WORK_ITEM_QUEUE_SIZE_SETTING, DEFAULT_WORK_ITEM_QUEUE_SIZE);
+    }
+
+    public int getCachedItemsTimeToLive() {
+        var executionPlanPeriodSeconds = getPartitionExecutionPlanPeriodSeconds();
+        var ttl = context.getSetting(CACHED_ITEMS_TIME_TO_LIVE_SECONDS, executionPlanPeriodSeconds);
+        return max(ttl, executionPlanPeriodSeconds);
     }
 
     public int getNumCrawlers(int defaultValue) {
@@ -69,7 +78,7 @@ public class PartitionConfiguration {
     }
 
     public ExecutionPlan getExecutionPlan() {
-        var periodSeconds = context.getSetting(PART_EXECUTION_PLAN_PERIOD_SECONDS, DEFAULT_EXECUTION_PERIOD_SECONDS);
+        var periodSeconds = getPartitionExecutionPlanPeriodSeconds();
         var setting = context.getSetting(PART_EXECUTION_PLAN_DELAY_SECONDS, null);
         int initialDelaySeconds;
         if ("random".equals(setting) || setting == null) {
@@ -87,6 +96,10 @@ public class PartitionConfiguration {
                     " A longer execution period should be considered.", periodSeconds, LOW_EXECUTION_PERIOD_SECONDS_THRESHOLD, getWorkItemQueueSize()));
         }
         return new RecurringExecutionPlan(Duration.ofSeconds(periodSeconds), Duration.ofSeconds(initialDelaySeconds), monitor);
+    }
+
+    private int getPartitionExecutionPlanPeriodSeconds() {
+        return context.getSetting(PART_EXECUTION_PLAN_PERIOD_SECONDS, DEFAULT_EXECUTION_PERIOD_SECONDS);
     }
 
     private int randomSeconds() {

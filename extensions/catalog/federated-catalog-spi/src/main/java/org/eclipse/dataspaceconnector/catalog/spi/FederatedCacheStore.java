@@ -17,6 +17,7 @@ package org.eclipse.dataspaceconnector.catalog.spi;
 import org.eclipse.dataspaceconnector.spi.query.Criterion;
 import org.eclipse.dataspaceconnector.spi.types.domain.contract.offer.ContractOffer;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
@@ -28,7 +29,7 @@ public interface FederatedCacheStore {
     /**
      * Adds an {@link ContractOffer} to the store
      */
-    void save(ContractOffer asset);
+    void save(ContractOffer contractOffer);
 
     /**
      * Queries the store for {@link ContractOffer}s
@@ -39,8 +40,9 @@ public interface FederatedCacheStore {
     Collection<ContractOffer> query(List<Criterion> query);
 
     /**
-     * Deletes all entries from the cache
+     * Remove {@link ContractOffer} from the cache whose time to live has expired.
+     *
+     * @param ttl Time to live.
      */
-    void deleteAll();
-
+    void deleteExpired(Duration ttl);
 }

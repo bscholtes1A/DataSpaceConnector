@@ -72,11 +72,6 @@ public class LoaderManagerImpl implements LoaderManager {
         }
     }
 
-    @Override
-    public void clear() {
-        loaders.forEach(Loader::clear);
-    }
-
     private void beginDequeue() {
         while (isRunning.get()) {
             boolean isBatchFull = true;
