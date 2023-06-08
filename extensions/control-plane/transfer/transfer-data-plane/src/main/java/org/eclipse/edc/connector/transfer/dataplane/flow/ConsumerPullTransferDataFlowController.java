@@ -14,9 +14,8 @@
 
 package org.eclipse.edc.connector.transfer.dataplane.flow;
 
-import org.eclipse.edc.connector.transfer.dataplane.proxy.ConsumerPullTransferProxyResolver;
-import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.ConsumerPullTransferEndpointDataReferenceCreationRequest;
-import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.ConsumerPullTransferEndpointDataReferenceService;
+import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.ConsumerPullEndpointDataReferenceResolver;
+import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.EndpointDataReferenceRequest;
 import org.eclipse.edc.connector.transfer.spi.flow.DataFlowController;
 import org.eclipse.edc.connector.transfer.spi.types.DataFlowResponse;
 import org.eclipse.edc.connector.transfer.spi.types.DataRequest;
@@ -27,18 +26,15 @@ import org.eclipse.edc.spi.types.domain.edr.EndpointDataAddressConstants;
 import org.eclipse.edc.spi.types.domain.edr.EndpointDataReference;
 import org.jetbrains.annotations.NotNull;
 
-import static java.lang.String.format;
 import static org.eclipse.edc.connector.transfer.dataplane.spi.TransferDataPlaneConstants.HTTP_PROXY;
 import static org.eclipse.edc.spi.response.ResponseStatus.FATAL_ERROR;
 
 public class ConsumerPullTransferDataFlowController implements DataFlowController {
 
-    private final ConsumerPullTransferProxyResolver proxyResolver;
-    private final ConsumerPullTransferEndpointDataReferenceService proxyReferenceService;
+    private final ConsumerPullEndpointDataReferenceResolver resolver;
 
-    public ConsumerPullTransferDataFlowController(ConsumerPullTransferProxyResolver proxyResolver, ConsumerPullTransferEndpointDataReferenceService proxyReferenceService) {
-        this.proxyResolver = proxyResolver;
-        this.proxyReferenceService = proxyReferenceService;
+    public ConsumerPullTransferDataFlowController(ConsumerPullEndpointDataReferenceResolver resolver) {
+        this.resolver = resolver;
     }
 
     @Override
@@ -48,19 +44,13 @@ public class ConsumerPullTransferDataFlowController implements DataFlowControlle
 
     @Override
     public @NotNull StatusResult<DataFlowResponse> initiateFlow(DataRequest dataRequest, DataAddress contentAddress, Policy policy) {
-        var proxyUrl = proxyResolver.resolveProxyUrl(contentAddress);
-        if (proxyUrl.failed()) {
-            return StatusResult.failure(FATAL_ERROR, format("Failed to resolve proxy url for data request %s%n %s", dataRequest.getId(), proxyUrl.getFailureDetail()));
-        }
-
-        var proxyCreationRequest = ConsumerPullTransferEndpointDataReferenceCreationRequest.Builder.newInstance()
+        var proxyCreationRequest = EndpointDataReferenceRequest.Builder.newInstance()
                 .id(dataRequest.getId())
-                .contentAddress(contentAddress)
-                .proxyEndpoint(proxyUrl.getContent())
                 .contractId(dataRequest.getContractId())
+                .contentAddress(contentAddress)
                 .build();
 
-        return proxyReferenceService.createProxyReference(proxyCreationRequest)
+        return resolver.resolve(proxyCreationRequest)
                 .map(this::createResponse)
                 .map(StatusResult::success)
                 .orElse(failure -> StatusResult.failure(FATAL_ERROR, "Failed to generate proxy: " + failure.getFailureDetail()));

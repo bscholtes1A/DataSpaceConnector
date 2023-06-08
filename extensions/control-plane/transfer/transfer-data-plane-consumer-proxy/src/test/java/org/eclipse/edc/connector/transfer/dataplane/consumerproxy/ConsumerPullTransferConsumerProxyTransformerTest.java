@@ -12,14 +12,13 @@
  *
  */
 
-package org.eclipse.edc.connector.transfer.dataplane.proxy;
+package org.eclipse.edc.connector.transfer.dataplane.consumerproxy;
 
-import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.ConsumerPullTransferEndpointDataReferenceCreationRequest;
-import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.ConsumerPullTransferEndpointDataReferenceService;
+import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.ConsumerPullEndpointDataReferenceResolver;
+import org.eclipse.edc.connector.transfer.dataplane.spi.proxy.EndpointDataReferenceRequest;
 import org.eclipse.edc.spi.result.Result;
 import org.eclipse.edc.spi.types.domain.HttpDataAddress;
 import org.eclipse.edc.spi.types.domain.edr.EndpointDataReference;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -28,66 +27,35 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.edc.connector.transfer.dataplane.spi.TransferDataPlaneConstants.EDC_CONTRACT_ID;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class ConsumerPullTransferProxyTransformerTest {
+class ConsumerPullTransferConsumerProxyTransformerTest {
 
-    private ConsumerPullTransferProxyResolver proxyResolverMock;
-    private ConsumerPullTransferEndpointDataReferenceService proxyReferenceServiceMock;
-    private ConsumerPullTransferProxyTransformer transformer;
-
-    /**
-     * Creates dummy {@link EndpointDataReference}.
-     */
-    private static EndpointDataReference createEndpointDataReference() {
-        return EndpointDataReference.Builder.newInstance()
-                .endpoint("some.endpoint.url")
-                .authKey("test-authkey")
-                .authCode(UUID.randomUUID().toString())
-                .id(UUID.randomUUID().toString())
-                .properties(Map.of(
-                        "key1", "value1",
-                        EDC_CONTRACT_ID, UUID.randomUUID().toString())
-                )
-                .build();
-    }
-
-    @BeforeEach
-    public void setUp() {
-        proxyResolverMock = mock(ConsumerPullTransferProxyResolver.class);
-        proxyReferenceServiceMock = mock(ConsumerPullTransferEndpointDataReferenceService.class);
-        transformer = new ConsumerPullTransferProxyTransformer(proxyResolverMock, proxyReferenceServiceMock);
-    }
+    private final ConsumerPullEndpointDataReferenceResolver resolverMock = mock(ConsumerPullEndpointDataReferenceResolver.class);
+    private final ConsumerPullTransferConsumerProxyTransformer transformer = new ConsumerPullTransferConsumerProxyTransformer(resolverMock);
 
     /**
      * OK test: check that success result if returned and assert content of the returned {@link EndpointDataReference}
      */
     @Test
-    void transformation_success() {
+    void verifyTransformSuccess() {
         var inputEdr = createEndpointDataReference();
         var outputEdr = createEndpointDataReference();
-        var proxyCreationRequestCapture = ArgumentCaptor.forClass(ConsumerPullTransferEndpointDataReferenceCreationRequest.class);
-        var proxyUrl = "some.proxy.url";
+        var requestCaptor = ArgumentCaptor.forClass(EndpointDataReferenceRequest.class);
 
-        when(proxyResolverMock.resolveProxyUrl(any())).thenReturn(Result.success(proxyUrl));
-        when(proxyReferenceServiceMock.createProxyReference(any())).thenReturn(Result.success(outputEdr));
+        when(resolverMock.resolve(requestCaptor.capture())).thenReturn(Result.success(outputEdr));
 
         var result = transformer.transform(inputEdr);
-
-        verify(proxyReferenceServiceMock).createProxyReference(proxyCreationRequestCapture.capture());
 
         assertThat(result.succeeded()).isTrue();
         assertThat(result.getContent()).isEqualTo(outputEdr);
 
-        var proxyCreationRequest = proxyCreationRequestCapture.getValue();
-        assertThat(proxyCreationRequest.getId()).isEqualTo(inputEdr.getId());
-        assertThat(proxyCreationRequest.getContractId()).isEqualTo(inputEdr.getProperties().get(EDC_CONTRACT_ID));
-        assertThat(proxyCreationRequest.getProxyEndpoint()).isEqualTo(proxyUrl);
-        assertThat(proxyCreationRequest.getProperties()).containsExactlyInAnyOrderEntriesOf(inputEdr.getProperties());
-        assertThat(proxyCreationRequest.getContentAddress()).satisfies(address -> {
+        var capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.getId()).isEqualTo(inputEdr.getId());
+        assertThat(capturedRequest.getContractId()).isEqualTo(inputEdr.getProperties().get(EDC_CONTRACT_ID));
+        assertThat(capturedRequest.getProperties()).containsExactlyInAnyOrderEntriesOf(inputEdr.getProperties());
+        assertThat(capturedRequest.getContentAddress()).satisfies(address -> {
             assertThat(address.getType()).isEqualTo(HttpDataAddress.HTTP_DATA);
             var httpAddress = (HttpDataAddress) address;
             assertThat(httpAddress.getBaseUrl()).isEqualTo(inputEdr.getEndpoint());
@@ -104,7 +72,7 @@ class ConsumerPullTransferProxyTransformerTest {
      * Check that a failed result is returned if input {@link EndpointDataReference} does not contain a contract id.
      */
     @Test
-    void missingContractId_shouldReturnFailedResult() {
+    void verifyReturnFailedResultIfMissingContractId() {
         var edr = EndpointDataReference.Builder.newInstance()
                 .endpoint("some.test.endpoint")
                 .authKey("test-authkey")
@@ -118,5 +86,21 @@ class ConsumerPullTransferProxyTransformerTest {
         assertThat(result.failed()).isTrue();
         assertThat(result.getFailureMessages())
                 .containsExactly(String.format("Cannot transform endpoint data reference with id %s as contract id is missing", edr.getId()));
+    }
+
+    /**
+     * Creates dummy {@link EndpointDataReference}.
+     */
+    private static EndpointDataReference createEndpointDataReference() {
+        return EndpointDataReference.Builder.newInstance()
+                .endpoint("some.endpoint.url")
+                .authKey("test-authkey")
+                .authCode(UUID.randomUUID().toString())
+                .id(UUID.randomUUID().toString())
+                .properties(Map.of(
+                        "key1", "value1",
+                        EDC_CONTRACT_ID, UUID.randomUUID().toString())
+                )
+                .build();
     }
 }

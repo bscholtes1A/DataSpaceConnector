@@ -19,6 +19,8 @@ plugins {
 
 dependencies {
     api(project(":spi:common:core-spi"))
+    api(project(":spi:control-plane:transfer-spi"))
+    api(project(":spi:data-plane-selector:data-plane-selector-spi"))
 }
 
 

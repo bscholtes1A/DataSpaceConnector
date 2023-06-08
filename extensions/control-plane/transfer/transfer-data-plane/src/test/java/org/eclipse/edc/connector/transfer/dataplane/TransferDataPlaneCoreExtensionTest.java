@@ -23,11 +23,8 @@ import org.eclipse.edc.connector.dataplane.spi.client.DataPlaneClient;
 import org.eclipse.edc.connector.transfer.dataplane.api.ConsumerPullTransferTokenValidationApiController;
 import org.eclipse.edc.connector.transfer.dataplane.flow.ConsumerPullTransferDataFlowController;
 import org.eclipse.edc.connector.transfer.dataplane.flow.ProviderPushTransferDataFlowController;
-import org.eclipse.edc.connector.transfer.dataplane.proxy.ConsumerPullTransferProxyResolver;
-import org.eclipse.edc.connector.transfer.dataplane.proxy.ConsumerPullTransferProxyTransformer;
 import org.eclipse.edc.connector.transfer.dataplane.spi.security.DataEncrypter;
 import org.eclipse.edc.connector.transfer.dataplane.spi.security.KeyPairWrapper;
-import org.eclipse.edc.connector.transfer.spi.edr.EndpointDataReferenceTransformerRegistry;
 import org.eclipse.edc.connector.transfer.spi.flow.DataFlowManager;
 import org.eclipse.edc.junit.extensions.DependencyInjectionExtension;
 import org.eclipse.edc.spi.message.RemoteMessageDispatcherRegistry;
@@ -59,7 +56,6 @@ class TransferDataPlaneCoreExtensionTest {
 
     private ServiceExtensionContext context;
     private WebService webServiceMock;
-    private EndpointDataReferenceTransformerRegistry endpointDataReferenceTransformerRegistryMock;
     private DataFlowManager dataFlowManagerMock;
     private TransferDataPlaneCoreExtension extension;
 
@@ -69,7 +65,6 @@ class TransferDataPlaneCoreExtensionTest {
         this.webServiceMock = mock(WebService.class);
         ControlApiConfiguration controlApiConfigurationMock = mock(ControlApiConfiguration.class);
         when(controlApiConfigurationMock.getContextAlias()).thenReturn(CONTROL_PLANE_API_CONTEXT);
-        this.endpointDataReferenceTransformerRegistryMock = mock(EndpointDataReferenceTransformerRegistry.class);
         this.dataFlowManagerMock = mock(DataFlowManager.class);
 
         context.registerService(PrivateKeyResolver.class, mock(PrivateKeyResolver.class));
@@ -84,9 +79,7 @@ class TransferDataPlaneCoreExtensionTest {
         var keyPairWrapper = mock(KeyPairWrapper.class);
         when(keyPairWrapper.get()).thenReturn(keyPair);
         context.registerService(KeyPairWrapper.class, keyPairWrapper);
-        context.registerService(EndpointDataReferenceTransformerRegistry.class, endpointDataReferenceTransformerRegistryMock);
         context.registerService(DataPlaneClient.class, mock(DataPlaneClient.class));
-        context.registerService(ConsumerPullTransferProxyResolver.class, mock(ConsumerPullTransferProxyResolver.class));
 
         this.context = spy(context); //used to inject the config
         when(this.context.getMonitor()).thenReturn(monitor);
@@ -100,7 +93,6 @@ class TransferDataPlaneCoreExtensionTest {
 
         verify(dataFlowManagerMock).register(any(ConsumerPullTransferDataFlowController.class));
         verify(dataFlowManagerMock).register(any(ProviderPushTransferDataFlowController.class));
-        verify(endpointDataReferenceTransformerRegistryMock).registerTransformer(any(ConsumerPullTransferProxyTransformer.class));
     }
 
     @Test

@@ -66,7 +66,6 @@ public class EndpointDataReferenceReceiverRegistryImpl implements EndpointDataRe
                         .compose(transformerRegistry::transform)
                         .orElseThrow(failure -> new EdcException(format("Failed to send EDR for transfer process %s with error %s", msg.getTransferProcessId(), failure.getFailureDetail())));
 
-
                 sendEdr(edr).join().orElseThrow(failure -> new EdcException(failure.getFailureDetail()));
             }
         }

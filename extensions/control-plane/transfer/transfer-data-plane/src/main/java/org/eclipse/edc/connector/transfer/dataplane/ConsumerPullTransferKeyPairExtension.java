@@ -40,7 +40,7 @@ import java.util.UUID;
 import static org.eclipse.edc.connector.transfer.dataplane.TransferDataPlaneConfig.TOKEN_SIGNER_PRIVATE_KEY_ALIAS;
 import static org.eclipse.edc.connector.transfer.dataplane.TransferDataPlaneConfig.TOKEN_VERIFIER_PUBLIC_KEY_ALIAS;
 
-@Extension(value = ConsumerPullTransferProxyResolverExtension.NAME)
+@Extension(value = ConsumerPullEndpointDataReferenceResolverExtension.NAME)
 public class ConsumerPullTransferKeyPairExtension implements ServiceExtension {
 
     public static final String NAME = "Consumer Pull Transfer Key Pair";

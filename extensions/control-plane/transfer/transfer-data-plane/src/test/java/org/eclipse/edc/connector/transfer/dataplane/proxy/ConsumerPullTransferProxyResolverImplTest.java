@@ -32,12 +32,12 @@ import static org.mockito.Mockito.when;
 class ConsumerPullTransferProxyResolverImplTest {
 
     private DataPlaneSelectorClient selectorClient;
-    private ConsumerPullTransferProxyResolverImpl resolver;
+    private ConsumerPullEndpointDataReferenceResolverImpl resolver;
 
     @BeforeEach
     public void setUp() {
         selectorClient = mock(DataPlaneSelectorClient.class);
-        resolver = new ConsumerPullTransferProxyResolverImpl(selectorClient, UUID.randomUUID().toString());
+        resolver = new ConsumerPullEndpointDataReferenceResolverImpl(selectorClient, UUID.randomUUID().toString());
     }
 
     @Test

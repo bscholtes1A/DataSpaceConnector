@@ -27,20 +27,20 @@ import static org.eclipse.edc.connector.transfer.dataplane.spi.TransferDataPlane
 import static org.eclipse.edc.connector.transfer.dataplane.spi.TransferDataPlaneConstants.DATA_ADDRESS;
 import static org.eclipse.edc.jwt.spi.JwtRegisteredClaimNames.EXPIRATION_TIME;
 
-class ConsumerPullTransferTokenDecoratorTest {
+class EdcDataPlaneTokenDecoratorTest {
 
     private Date expiration;
     private String contractId;
     private String encryptedDataAddress;
 
-    private ConsumerPullTransferTokenDecorator decorator;
+    private EdcDataPlaneTokenDecorator decorator;
 
     @BeforeEach
     public void setUp() {
         expiration = Date.from(Instant.now().plusSeconds(ThreadLocalRandom.current().nextInt(1, 10)));
         contractId = UUID.randomUUID().toString();
         encryptedDataAddress = UUID.randomUUID().toString();
-        decorator = new ConsumerPullTransferTokenDecorator(expiration, contractId, encryptedDataAddress);
+        decorator = new EdcDataPlaneTokenDecorator(expiration, contractId, encryptedDataAddress);
     }
 
     @Test

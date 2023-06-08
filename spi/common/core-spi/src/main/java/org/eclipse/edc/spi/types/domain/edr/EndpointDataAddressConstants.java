@@ -55,7 +55,6 @@ public class EndpointDataAddressConstants {
     }
 
     public static Result<EndpointDataReference> to(DataAddress address) {
-
         if (!address.getType().equals(EDR_SIMPLE_TYPE)) {
             return Result.failure(format("Failed to convert data address with type %s to an EDR", address.getType()));
         }
