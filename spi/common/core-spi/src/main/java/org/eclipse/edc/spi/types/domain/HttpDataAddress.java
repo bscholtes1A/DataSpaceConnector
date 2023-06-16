@@ -57,7 +57,7 @@ public class HttpDataAddress extends DataAddress {
     public static final String NON_CHUNKED_TRANSFER = "nonChunkedTransfer";
     public static final Set<String> ADDITIONAL_HEADERS_TO_IGNORE = Set.of("content-type");
 
-    private HttpDataAddress() {
+    protected HttpDataAddress() {
         super();
         this.setType(HTTP_DATA);
     }

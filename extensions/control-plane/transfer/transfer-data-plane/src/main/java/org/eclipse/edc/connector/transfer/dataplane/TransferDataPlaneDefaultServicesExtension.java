@@ -35,7 +35,7 @@ public class TransferDataPlaneDefaultServicesExtension implements ServiceExtensi
     }
 
     @Provider(isDefault = true)
-    public DataEncrypter getDataEncrypter(ServiceExtensionContext context) {
+    public DataEncrypter dataEncrypter(ServiceExtensionContext context) {
         context.getMonitor().warning("No DataEncrypter registered, a no-op implementation will be used, not suitable for production environments");
         return new NoopDataEncrypter();
     }

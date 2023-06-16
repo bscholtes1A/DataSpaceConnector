@@ -24,6 +24,7 @@ import org.eclipse.edc.connector.transfer.dataplane.spi.security.DataEncrypter;
 import org.eclipse.edc.jwt.spi.TokenValidationService;
 import org.eclipse.edc.spi.types.TypeManager;
 import org.eclipse.edc.spi.types.domain.DataAddress;
+import org.eclipse.edc.web.spi.exception.InvalidRequestException;
 import org.eclipse.edc.web.spi.exception.NotAuthorizedException;
 
 import static java.lang.String.format;
@@ -60,7 +61,7 @@ public class ConsumerPullTransferTokenValidationApiController implements Consume
 
         var obj = result.getContent().getClaim(DATA_ADDRESS);
         if (!(obj instanceof String)) {
-            throw new IllegalArgumentException(format("Missing claim `%s` in token", DATA_ADDRESS));
+            throw new InvalidRequestException(format("Missing claim `%s` in token", DATA_ADDRESS));
         }
 
         return typeManager.readValue(dataEncrypter.decrypt((String) obj), DataAddress.class);

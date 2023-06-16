@@ -13,10 +13,9 @@
  *
  */
 
-package org.eclipse.edc.connector.transfer.dataplane;
+package org.eclipse.edc.connector.transfer.dataplane.consumerproxy;
 
 import org.eclipse.edc.connector.api.control.configuration.ControlApiConfiguration;
-import org.eclipse.edc.connector.contract.spi.negotiation.store.ContractNegotiationStore;
 import org.eclipse.edc.connector.dataplane.selector.spi.client.DataPlaneSelectorClient;
 import org.eclipse.edc.connector.dataplane.spi.client.DataPlaneClient;
 import org.eclipse.edc.connector.transfer.dataplane.api.ConsumerPullTransferTokenValidationApiController;
@@ -32,6 +31,7 @@ import org.eclipse.edc.connector.transfer.dataplane.spi.security.DataEncrypter;
 import org.eclipse.edc.connector.transfer.dataplane.validation.ContractValidationRule;
 import org.eclipse.edc.connector.transfer.dataplane.validation.ExpirationDateValidationRule;
 import org.eclipse.edc.connector.transfer.spi.callback.ControlPlaneApiUrl;
+import org.eclipse.edc.connector.transfer.spi.edr.EndpointDataReferenceTransformerRegistry;
 import org.eclipse.edc.connector.transfer.spi.flow.DataFlowManager;
 import org.eclipse.edc.connector.transfer.spi.provision.ProvisionManager;
 import org.eclipse.edc.connector.transfer.spi.provision.ResourceManifestGenerator;
@@ -58,13 +58,13 @@ import static org.eclipse.edc.connector.transfer.dataplane.TransferDataPlaneConf
 import static org.eclipse.edc.connector.transfer.dataplane.TransferDataPlaneConfig.TOKEN_VALIDITY_SECONDS;
 import static org.eclipse.edc.connector.transfer.dataplane.TransferDataPlaneConfig.TOKEN_VERIFIER_PUBLIC_KEY_ALIAS;
 
-@Extension(value = TransferDataPlaneCoreExtension.NAME)
-public class TransferDataPlaneCoreExtension implements ServiceExtension {
+@Extension(value = ConsumerPullDataPlaneConsumerProxyExtension.NAME)
+public class ConsumerPullDataPlaneConsumerProxyExtension implements ServiceExtension {
 
     public static final String NAME = "Transfer Data Plane Core";
 
     @Inject
-    private ContractNegotiationStore contractNegotiationStore;
+    private EndpointDataReferenceTransformerRegistry transformerRegistry;
 
     @Inject
     private WebService webService;

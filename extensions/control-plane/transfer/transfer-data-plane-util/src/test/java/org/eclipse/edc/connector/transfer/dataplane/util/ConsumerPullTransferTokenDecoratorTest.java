@@ -12,7 +12,7 @@
  *
  */
 
-package org.eclipse.edc.connector.transfer.dataplane.proxy;
+package org.eclipse.edc.connector.transfer.dataplane.util;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
